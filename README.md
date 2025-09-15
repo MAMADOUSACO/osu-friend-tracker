@@ -1,0 +1,1 @@
+# osu-friend-tracker
