@@ -562,7 +562,7 @@
                     return;
                 }
                 
-                const scopes = ['public', 'friends.read'];
+                const scopes = ['public', 'identify', 'friends.read'];
                 const authUrl = `https://osu.ppy.sh/oauth/authorize?` +
                     `client_id=${this.clientId}&` +
                     `redirect_uri=${encodeURIComponent(window.location.href)}&` +
@@ -736,6 +736,16 @@
             async startMonitoring() {
                 this.log('🎯 Starting friend monitoring...', 'info');
                 
+                // First, test basic API access
+                try {
+                    this.log('🧪 Testing API access...', 'info');
+                    const userData = await this.apiRequest('/me');
+                    this.log(`✅ API test successful! Hello, ${userData.username}`, 'success');
+                } catch (error) {
+                    this.log('❌ API test failed. Check your OAuth setup.', 'error');
+                    return;
+                }
+                
                 // Initial load
                 await this.loadFriends();
                 
@@ -750,12 +760,44 @@
             async loadFriends() {
                 try {
                     this.log('📡 Fetching friends list...', 'info');
-                    const friendsData = await this.apiRequest('/me/friends');
+                    
+                    // Try different possible endpoints
+                    let friendsData = null;
+                    const endpoints = ['/friends', '/me/friends', '/users/me/friends'];
+                    
+                    for (const endpoint of endpoints) {
+                        try {
+                            this.log(`🔍 Trying endpoint: ${endpoint}`, 'info');
+                            friendsData = await this.apiRequest(endpoint);
+                            this.log(`✅ Success with endpoint: ${endpoint}`, 'success');
+                            break;
+                        } catch (error) {
+                            this.log(`❌ Failed with ${endpoint}: ${error.message}`, 'warning');
+                            continue;
+                        }
+                    }
+                    
+                    if (!friendsData) {
+                        throw new Error('All friends endpoints failed');
+                    }
+                    // Handle different response formats
+                    let friends = [];
+                    if (Array.isArray(friendsData)) {
+                        friends = friendsData;
+                    } else if (friendsData.friends && Array.isArray(friendsData.friends)) {
+                        friends = friendsData.friends;
+                    } else if (friendsData.data && Array.isArray(friendsData.data)) {
+                        friends = friendsData.data;
+                    } else {
+                        this.log('⚠️ Unexpected friends data format:', 'warning');
+                        console.log('Friends data:', friendsData);
+                        friends = [];
+                    }
                     
                     // Track status changes
                     const statusChanges = [];
                     
-                    friendsData.forEach(friend => {
+                    friends.forEach(friend => {
                         const oldFriend = this.friends.get(friend.id);
                         const isOnline = friend.is_online;
                         
@@ -778,7 +820,7 @@
                     });
                     
                     this.renderFriends();
-                    this.log(`✅ Loaded ${friendsData.length} friends`, 'success');
+                    this.log(`✅ Loaded ${friends.length} friends`, 'success');
                     
                 } catch (error) {
                     this.log(`❌ Failed to load friends: ${error.message}`, 'error');
