@@ -333,40 +333,19 @@
             <p>Get notified when your osu! friends come online</p>
         </div>
 
-        <!-- Login Section -->
-        <div id="loginSection" class="card">
+        <!-- Initial Setup Section -->
+        <div id="setupSection" class="card">
             <div class="login-section">
-                <h2>Connect Your osu! Account</h2>
-                <p style="margin: 15px 0; color: #666;">First, you need to set up OAuth credentials:</p>
+                <h2>🎵 Authorize osu! Access</h2>
+                <p style="margin: 15px 0; color: #666;">Click below to connect your osu! account and start tracking friends!</p>
                 
-                <div class="oauth-setup">
-                    <h3>🔧 Setup Instructions</h3>
-                    <p style="margin-bottom: 15px;">
-                        1. Go to <a href="https://osu.ppy.sh/home/account/edit#new-oauth-application" target="_blank">osu! OAuth Applications</a><br>
-                        2. Create a new application with these settings:<br>
-                        3. <strong>Redirect URI:</strong> <code id="currentUrl"></code>
-                    </p>
-                    
-                    <div class="input-group">
-                        <label for="clientId">Client ID:</label>
-                        <input type="text" id="clientId" placeholder="Enter your OAuth Client ID">
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="clientSecret">Client Secret:</label>
-                        <input type="password" id="clientSecret" placeholder="Enter your OAuth Client Secret">
-                    </div>
-                    
-                    <button class="btn" onclick="saveOAuthCredentials()">Save Credentials</button>
-                </div>
-                
-                <div id="oauthSaved" class="success hidden">
-                    ✅ OAuth credentials saved! You can now login.
-                </div>
-                
-                <button id="loginBtn" class="btn" onclick="loginWithOsu()" disabled>
-                    🎵 Login with osu!
+                <button id="authBtn" class="btn" onclick="authorizeOsu()">
+                    🔗 Connect to osu!
                 </button>
+                
+                <div id="authStatus" class="loading hidden">
+                    Connecting to osu!...
+                </div>
             </div>
         </div>
 
@@ -441,8 +420,9 @@
             constructor() {
                 this.accessToken = null;
                 this.refreshToken = null;
-                this.clientId = null;
-                this.clientSecret = null;
+                // Hardcoded OAuth credentials
+                this.clientId = '44148';
+                this.clientSecret = 'kKlVutf31MaMYLeq0elIBN3ucpycEjb2mdDp2mby';
                 this.friends = new Map();
                 this.monitoredFriends = new Set();
                 this.pollInterval = 120000; // 2 minutes
@@ -454,17 +434,8 @@
             init() {
                 this.log('🚀 osu! Friend Tracker starting...', 'info');
                 
-                // Set current URL for OAuth setup
-                document.getElementById('currentUrl').textContent = window.location.href;
-                
                 // Load saved settings
                 this.loadSettings();
-                
-                // Check if we have OAuth credentials
-                if (this.clientId && this.clientSecret) {
-                    document.getElementById('oauthSaved').classList.remove('hidden');
-                    document.getElementById('loginBtn').disabled = false;
-                }
                 
                 // Check if we're returning from OAuth
                 this.handleOAuthCallback();
@@ -475,6 +446,11 @@
                 // Update poll interval display
                 document.getElementById('pollIntervalValue').textContent = this.pollInterval / 1000;
                 document.getElementById('pollInterval').value = this.pollInterval / 1000;
+                
+                // If we have an access token, show the app immediately
+                if (this.accessToken) {
+                    this.showApp();
+                }
             }
 
             log(message, type = 'info') {
@@ -492,14 +468,12 @@
 
             saveSettings() {
                 const settings = {
-                    clientId: this.clientId,
-                    clientSecret: this.clientSecret,
                     accessToken: this.accessToken,
                     refreshToken: this.refreshToken,
                     monitoredFriends: Array.from(this.monitoredFriends),
                     pollInterval: this.pollInterval,
-                    enableNotifications: document.getElementById('enableNotifications').checked,
-                    enableSounds: document.getElementById('enableSounds').checked
+                    enableNotifications: document.getElementById('enableNotifications')?.checked ?? true,
+                    enableSounds: document.getElementById('enableSounds')?.checked ?? true
                 };
                 
                 localStorage.setItem('osuFriendTracker', JSON.stringify(settings));
@@ -511,57 +485,29 @@
                 if (saved) {
                     try {
                         const settings = JSON.parse(saved);
-                        this.clientId = settings.clientId;
-                        this.clientSecret = settings.clientSecret;
                         this.accessToken = settings.accessToken;
                         this.refreshToken = settings.refreshToken;
                         this.monitoredFriends = new Set(settings.monitoredFriends || []);
                         this.pollInterval = settings.pollInterval || 120000;
                         
-                        if (settings.enableNotifications !== undefined) {
-                            document.getElementById('enableNotifications').checked = settings.enableNotifications;
-                        }
-                        if (settings.enableSounds !== undefined) {
-                            document.getElementById('enableSounds').checked = settings.enableSounds;
-                        }
+                        // Set UI elements when they exist
+                        setTimeout(() => {
+                            if (document.getElementById('enableNotifications')) {
+                                document.getElementById('enableNotifications').checked = settings.enableNotifications ?? true;
+                            }
+                            if (document.getElementById('enableSounds')) {
+                                document.getElementById('enableSounds').checked = settings.enableSounds ?? true;
+                            }
+                        }, 100);
                         
                         this.log('📂 Settings loaded', 'success');
-                        
-                        // If we have an access token, show the app
-                        if (this.accessToken) {
-                            this.showApp();
-                        }
                     } catch (error) {
                         this.log('❌ Error loading settings: ' + error.message, 'error');
                     }
                 }
             }
 
-            saveOAuthCredentials() {
-                const clientId = document.getElementById('clientId').value.trim();
-                const clientSecret = document.getElementById('clientSecret').value.trim();
-                
-                if (!clientId || !clientSecret) {
-                    alert('Please enter both Client ID and Client Secret');
-                    return;
-                }
-                
-                this.clientId = clientId;
-                this.clientSecret = clientSecret;
-                this.saveSettings();
-                
-                document.getElementById('oauthSaved').classList.remove('hidden');
-                document.getElementById('loginBtn').disabled = false;
-                
-                this.log('🔐 OAuth credentials saved', 'success');
-            }
-
-            loginWithOsu() {
-                if (!this.clientId) {
-                    alert('Please set up OAuth credentials first');
-                    return;
-                }
-                
+            authorizeOsu() {
                 const scopes = ['public', 'friends.read'];
                 const authUrl = `https://osu.ppy.sh/oauth/authorize?` +
                     `client_id=${this.clientId}&` +
@@ -690,7 +636,7 @@
             }
 
             showApp() {
-                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('setupSection').classList.add('hidden');
                 document.getElementById('appSection').classList.remove('hidden');
                 document.getElementById('connectionStatus').textContent = 'Connected';
                 document.getElementById('statusBar').classList.add('online');
@@ -702,22 +648,24 @@
             }
 
             logout() {
-                // Clear all data
-                localStorage.removeItem('osuFriendTracker');
+                // Clear tokens but keep other settings
+                const currentSettings = JSON.parse(localStorage.getItem('osuFriendTracker') || '{}');
+                delete currentSettings.accessToken;
+                delete currentSettings.refreshToken;
+                localStorage.setItem('osuFriendTracker', JSON.stringify(currentSettings));
                 
                 // Stop monitoring
                 if (this.pollTimer) {
                     clearInterval(this.pollTimer);
                 }
                 
-                // Reset state
+                // Reset auth state
                 this.accessToken = null;
                 this.refreshToken = null;
                 this.friends.clear();
-                this.monitoredFriends.clear();
                 
-                // Show login section
-                document.getElementById('loginSection').classList.remove('hidden');
+                // Show setup section
+                document.getElementById('setupSection').classList.remove('hidden');
                 document.getElementById('appSection').classList.add('hidden');
                 
                 this.log('👋 Logged out successfully', 'info');
