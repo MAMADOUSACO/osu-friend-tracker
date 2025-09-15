@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 osu! Friend Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff66d9 0%, #c44569 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .login-section {
+            text-align: center;
+        }
+
+        .oauth-setup {
+            background: #e3f2fd;
+            border: 2px dashed #2196f3;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .oauth-setup h3 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #ff66d9;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #ff66d9, #c44569);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-bar {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-bar.online {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+        }
+
+        .settings-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .setting-item {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .setting-item label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .friends-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .friend-card {
+            background: #fafafa;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .friend-card.online {
+            border-color: #4caf50;
+            background: #f1f8e9;
+        }
+
+        .friend-card.offline {
+            border-color: #f44336;
+            background: #ffebee;
+        }
+
+        .friend-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .friend-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .status-indicator.online {
+            background: #4caf50;
+            box-shadow: 0 0 5px #4caf50;
+        }
+
+        .status-indicator.offline {
+            background: #f44336;
+        }
+
+        .friend-name {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .friend-toggle {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .friend-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #ff66d9;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .friend-stats {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .notification-test {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .logs {
+            background: #2d2d2d;
+            color: #f0f0f0;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-entry.success { color: #4caf50; }
+        .log-entry.error { color: #f44336; }
+        .log-entry.info { color: #2196f3; }
+        .log-entry.warning { color: #ff9800; }
+
+        @media (max-width: 768px) {
+            .settings-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .friends-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #f44336;
+            margin: 10px 0;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4caf50;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 osu! Friend Tracker</h1>
+            <p>Get notified when your osu! friends come online</p>
+        </div>
+
+        <!-- Login Section -->
+        <div id="loginSection" class="card">
+            <div class="login-section">
+                <h2>Connect Your osu! Account</h2>
+                <p style="margin: 15px 0; color: #666;">First, you need to set up OAuth credentials:</p>
+                
+                <div class="oauth-setup">
+                    <h3>🔧 Setup Instructions</h3>
+                    <p style="margin-bottom: 15px;">
+                        1. Go to <a href="https://osu.ppy.sh/home/account/edit#new-oauth-application" target="_blank">osu! OAuth Applications</a><br>
+                        2. Create a new application with these settings:<br>
+                        3. <strong>Redirect URI:</strong> <code id="currentUrl"></code>
+                    </p>
+                    
+                    <div class="input-group">
+                        <label for="clientId">Client ID:</label>
+                        <input type="text" id="clientId" placeholder="Enter your OAuth Client ID">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="clientSecret">Client Secret:</label>
+                        <input type="password" id="clientSecret" placeholder="Enter your OAuth Client Secret">
+                    </div>
+                    
+                    <button class="btn" onclick="saveOAuthCredentials()">Save Credentials</button>
+                </div>
+                
+                <div id="oauthSaved" class="success hidden">
+                    ✅ OAuth credentials saved! You can now login.
+                </div>
+                
+                <button id="loginBtn" class="btn" onclick="loginWithOsu()" disabled>
+                    🎵 Login with osu!
+                </button>
+            </div>
+        </div>
+
+        <!-- Main App Section -->
+        <div id="appSection" class="hidden">
+            <!-- Status Bar -->
+            <div id="statusBar" class="status-bar">
+                <div>
+                    <strong>Status:</strong> <span id="connectionStatus">Disconnected</span>
+                </div>
+                <div>
+                    <button class="btn" onclick="logout()" style="padding: 8px 16px; font-size: 14px;">Logout</button>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="card">
+                <h3>⚙️ Settings</h3>
+                <div class="settings-section">
+                    <div class="setting-item">
+                        <label for="pollInterval">Check Interval (seconds):</label>
+                        <input type="range" id="pollInterval" min="60" max="300" value="120" oninput="updatePollInterval(this.value)">
+                        <span id="pollIntervalValue">120</span> seconds
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label>Notification Settings:</label>
+                        <div style="margin-top: 10px;">
+                            <label style="font-weight: normal; margin-bottom: 5px;">
+                                <input type="checkbox" id="enableNotifications" checked onchange="updateSettings()"> 
+                                Desktop Notifications
+                            </label><br>
+                            <label style="font-weight: normal;">
+                                <input type="checkbox" id="enableSounds" checked onchange="updateSettings()"> 
+                                Sound Alerts
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="notification-test">
+                    <button class="btn" onclick="testNotification()" style="margin-right: 10px;">Test Notification</button>
+                    <button class="btn" onclick="testSound()">Test Sound</button>
+                </div>
+            </div>
+
+            <!-- Friends List -->
+            <div class="card">
+                <h3>👥 Friends List</h3>
+                <div id="friendsLoading" class="loading">Loading friends...</div>
+                <div id="friendsContainer" class="friends-grid hidden"></div>
+            </div>
+
+            <!-- Logs -->
+            <div class="card">
+                <h3>📋 Activity Log</h3>
+                <div id="logs" class="logs"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio elements for sound notifications -->
+    <audio id="onlineSound" preload="auto">
+        <source src="online.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="offlineSound" preload="auto">
+        <source src="offline.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        class OsuFriendTracker {
+            constructor() {
+                this.accessToken = null;
+                this.refreshToken = null;
+                this.clientId = null;
+                this.clientSecret = null;
+                this.friends = new Map();
+                this.monitoredFriends = new Set();
+                this.pollInterval = 120000; // 2 minutes
+                this.pollTimer = null;
+                
+                this.init();
+            }
+
+            init() {
+                this.log('🚀 osu! Friend Tracker starting...', 'info');
+                
+                // Set current URL for OAuth setup
+                document.getElementById('currentUrl').textContent = window.location.href;
+                
+                // Load saved settings
+                this.loadSettings();
+                
+                // Check if we have OAuth credentials
+                if (this.clientId && this.clientSecret) {
+                    document.getElementById('oauthSaved').classList.remove('hidden');
+                    document.getElementById('loginBtn').disabled = false;
+                }
+                
+                // Check if we're returning from OAuth
+                this.handleOAuthCallback();
+                
+                // Request notification permission
+                this.requestNotificationPermission();
+                
+                // Update poll interval display
+                document.getElementById('pollIntervalValue').textContent = this.pollInterval / 1000;
+                document.getElementById('pollInterval').value = this.pollInterval / 1000;
+            }
+
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry ${type}`;
+                logEntry.textContent = `[${timestamp}] ${message}`;
+                
+                const logsContainer = document.getElementById('logs');
+                logsContainer.appendChild(logEntry);
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+                
+                console.log(message);
+            }
+
+            saveSettings() {
+                const settings = {
+                    clientId: this.clientId,
+                    clientSecret: this.clientSecret,
+                    accessToken: this.accessToken,
+                    refreshToken: this.refreshToken,
+                    monitoredFriends: Array.from(this.monitoredFriends),
+                    pollInterval: this.pollInterval,
+                    enableNotifications: document.getElementById('enableNotifications').checked,
+                    enableSounds: document.getElementById('enableSounds').checked
+                };
+                
+                localStorage.setItem('osuFriendTracker', JSON.stringify(settings));
+                this.log('💾 Settings saved', 'success');
+            }
+
+            loadSettings() {
+                const saved = localStorage.getItem('osuFriendTracker');
+                if (saved) {
+                    try {
+                        const settings = JSON.parse(saved);
+                        this.clientId = settings.clientId;
+                        this.clientSecret = settings.clientSecret;
+                        this.accessToken = settings.accessToken;
+                        this.refreshToken = settings.refreshToken;
+                        this.monitoredFriends = new Set(settings.monitoredFriends || []);
+                        this.pollInterval = settings.pollInterval || 120000;
+                        
+                        if (settings.enableNotifications !== undefined) {
+                            document.getElementById('enableNotifications').checked = settings.enableNotifications;
+                        }
+                        if (settings.enableSounds !== undefined) {
+                            document.getElementById('enableSounds').checked = settings.enableSounds;
+                        }
+                        
+                        this.log('📂 Settings loaded', 'success');
+                        
+                        // If we have an access token, show the app
+                        if (this.accessToken) {
+                            this.showApp();
+                        }
+                    } catch (error) {
+                        this.log('❌ Error loading settings: ' + error.message, 'error');
+                    }
+                }
+            }
+
+            saveOAuthCredentials() {
+                const clientId = document.getElementById('clientId').value.trim();
+                const clientSecret = document.getElementById('clientSecret').value.trim();
+                
+                if (!clientId || !clientSecret) {
+                    alert('Please enter both Client ID and Client Secret');
+                    return;
+                }
+                
+                this.clientId = clientId;
+                this.clientSecret = clientSecret;
+                this.saveSettings();
+                
+                document.getElementById('oauthSaved').classList.remove('hidden');
+                document.getElementById('loginBtn').disabled = false;
+                
+                this.log('🔐 OAuth credentials saved', 'success');
+            }
+
+            loginWithOsu() {
+                if (!this.clientId) {
+                    alert('Please set up OAuth credentials first');
+                    return;
+                }
+                
+                const scopes = ['public', 'friends.read'];
+                const authUrl = `https://osu.ppy.sh/oauth/authorize?` +
+                    `client_id=${this.clientId}&` +
+                    `redirect_uri=${encodeURIComponent(window.location.href)}&` +
+                    `response_type=code&` +
+                    `scope=${scopes.join(' ')}`;
+                
+                this.log('🔗 Redirecting to osu! OAuth...', 'info');
+                window.location.href = authUrl;
+            }
+
+            async handleOAuthCallback() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get('code');
+                
+                if (code) {
+                    this.log('🔑 OAuth code received, exchanging for token...', 'info');
+                    
+                    try {
+                        await this.exchangeCodeForToken(code);
+                        
+                        // Clean up URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        
+                        this.showApp();
+                    } catch (error) {
+                        this.log('❌ OAuth error: ' + error.message, 'error');
+                    }
+                }
+            }
+
+            async exchangeCodeForToken(code) {
+                const response = await fetch('https://osu.ppy.sh/oauth/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        client_id: this.clientId,
+                        client_secret: this.clientSecret,
+                        code: code,
+                        grant_type: 'authorization_code',
+                        redirect_uri: window.location.href.split('?')[0]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to exchange code for token');
+                }
+
+                const data = await response.json();
+                this.accessToken = data.access_token;
+                this.refreshToken = data.refresh_token;
+                
+                this.saveSettings();
+                this.log('✅ Access token obtained successfully', 'success');
+            }
+
+            async refreshAccessToken() {
+                if (!this.refreshToken) {
+                    throw new Error('No refresh token available');
+                }
+
+                const response = await fetch('https://osu.ppy.sh/oauth/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        client_id: this.clientId,
+                        client_secret: this.clientSecret,
+                        refresh_token: this.refreshToken,
+                        grant_type: 'refresh_token'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to refresh token');
+                }
+
+                const data = await response.json();
+                this.accessToken = data.access_token;
+                this.refreshToken = data.refresh_token;
+                
+                this.saveSettings();
+                this.log('🔄 Access token refreshed', 'success');
+            }
+
+            async apiRequest(endpoint) {
+                try {
+                    const response = await fetch(`https://osu.ppy.sh/api/v2${endpoint}`, {
+                        headers: {
+                            'Authorization': `Bearer ${this.accessToken}`,
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.status === 401) {
+                        // Token expired, try to refresh
+                        await this.refreshAccessToken();
+                        
+                        // Retry request with new token
+                        const retryResponse = await fetch(`https://osu.ppy.sh/api/v2${endpoint}`, {
+                            headers: {
+                                'Authorization': `Bearer ${this.accessToken}`,
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (!retryResponse.ok) {
+                            throw new Error(`API request failed: ${retryResponse.status}`);
+                        }
+                        
+                        return await retryResponse.json();
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`API request failed: ${response.status}`);
+                    }
+
+                    return await response.json();
+                } catch (error) {
+                    this.log(`❌ API Error: ${error.message}`, 'error');
+                    throw error;
+                }
+            }
+
+            showApp() {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('appSection').classList.remove('hidden');
+                document.getElementById('connectionStatus').textContent = 'Connected';
+                document.getElementById('statusBar').classList.add('online');
+                
+                this.log('🎉 Successfully logged in!', 'success');
+                
+                // Start monitoring
+                this.startMonitoring();
+            }
+
+            logout() {
+                // Clear all data
+                localStorage.removeItem('osuFriendTracker');
+                
+                // Stop monitoring
+                if (this.pollTimer) {
+                    clearInterval(this.pollTimer);
+                }
+                
+                // Reset state
+                this.accessToken = null;
+                this.refreshToken = null;
+                this.friends.clear();
+                this.monitoredFriends.clear();
+                
+                // Show login section
+                document.getElementById('loginSection').classList.remove('hidden');
+                document.getElementById('appSection').classList.add('hidden');
+                
+                this.log('👋 Logged out successfully', 'info');
+            }
+
+            async startMonitoring() {
+                this.log('🎯 Starting friend monitoring...', 'info');
+                
+                // Initial load
+                await this.loadFriends();
+                
+                // Set up polling
+                this.pollTimer = setInterval(() => {
+                    this.loadFriends();
+                }, this.pollInterval);
+                
+                this.log(`⏰ Monitoring every ${this.pollInterval / 1000} seconds`, 'info');
+            }
+
+            async loadFriends() {
+                try {
+                    this.log('📡 Fetching friends list...', 'info');
+                    const friendsData = await this.apiRequest('/me/friends');
+                    
+                    // Track status changes
+                    const statusChanges = [];
+                    
+                    friendsData.forEach(friend => {
+                        const oldFriend = this.friends.get(friend.id);
+                        const isOnline = friend.is_online;
+                        
+                        if (oldFriend && oldFriend.is_online !== isOnline) {
+                            statusChanges.push({
+                                friend: friend,
+                                wasOnline: oldFriend.is_online,
+                                isOnline: isOnline
+                            });
+                        }
+                        
+                        this.friends.set(friend.id, friend);
+                    });
+                    
+                    // Handle status changes
+                    statusChanges.forEach(change => {
+                        if (this.monitoredFriends.has(change.friend.id.toString())) {
+                            this.handleStatusChange(change);
+                        }
+                    });
+                    
+                    this.renderFriends();
+                    this.log(`✅ Loaded ${friendsData.length} friends`, 'success');
+                    
+                } catch (error) {
+                    this.log(`❌ Failed to load friends: ${error.message}`, 'error');
+                }
+            }
+
+            handleStatusChange(change) {
+                const { friend, wasOnline, isOnline } = change;
+                const action = isOnline ? 'came online' : 'went offline';
+                
+                this.log(`🔔 ${friend.username} ${action}!`, isOnline ? 'success' : 'warning');
+                
+                // Show notification
+                if (document.getElementById('enableNotifications').checked) {
+                    this.showNotification(friend, isOnline);
+                }
+                
+                // Play sound
+                if (document.getElementById('enableSounds').checked) {
+                    this.playSound(isOnline);
+                }
+            }
+
+            renderFriends() {
+                const container = document.getElementById('friendsContainer');
+                const loading = document.getElementById('friendsLoading');
+                
+                if (this.friends.size === 0) {
+                    loading.textContent = 'No friends found';
+                    return;
+                }
+                
+                loading.classList.add('hidden');
+                container.classList.remove('hidden');
+                
+                const friendsArray = Array.from(this.friends.values());
+                friendsArray.sort((a, b) => {
+                    // Online friends first
+                    if (a.is_online !== b.is_online) {
+                        return b.is_online ? 1 : -1;
+                    }
+                    return a.username.localeCompare(b.username);
+                });
+                
+                container.innerHTML = friendsArray.map(friend => {
+                    const isMonitored = this.monitoredFriends.has(friend.id.toString());
+                    const statusClass = friend.is_online ? 'online' : 'offline';
+                    const statusText = friend.is_online ? 'Online' : 'Offline';
+                    
+                    return `
+                        <div class="friend-card ${statusClass}">
+                            <div class="friend-header">
+                                <div class="friend-info">
+                                    <div class="status-indicator ${statusClass}"></div>
+                                    <div class="friend-name">${friend.username}</div>
+                                </div>
+                                <label class="friend-toggle">
+                                    <input type="checkbox" ${isMonitored ? 'checked' : ''} 
+                                           onchange="tracker.toggleFriendMonitoring('${friend.id}')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="friend-stats">
+                                Status: ${statusText} • Country: ${friend.country_code || 'Unknown'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            toggleFriendMonitoring(friendId) {
+                if (this.monitoredFriends.has(friendId)) {
+                    this.monitoredFriends.delete(friendId);
+                    this.log(`⏸️ Stopped monitoring ${this.friends.get(parseInt(friendId))?.username}`, 'info');
+                } else {
+                    this.monitoredFriends.add(friendId);
+                    this.log(`▶️ Started monitoring ${this.friends.get(parseInt(friendId))?.username}`, 'info');
+                }
+                
+                this.saveSettings();
+            }
+
+            updatePollInterval(seconds) {
+                this.pollInterval = seconds * 1000;
+                document.getElementById('pollIntervalValue').textContent = seconds;
+                
+                // Restart monitoring with new interval
+                if (this.pollTimer) {
+                    clearInterval(this.pollTimer);
+                    this.pollTimer = setInterval(() => {
+                        this.loadFriends();
+                    }, this.pollInterval);
+                }
+                
+                this.saveSettings();
+                this.log(`⏰ Poll interval updated to ${seconds} seconds`, 'info');
+            }
+
+            updateSettings() {
+                this.saveSettings();
+                this.log('⚙️ Settings updated', 'info');
+            }
+
+            async requestNotificationPermission() {
+                if ('Notification' in window) {
+                    if (Notification.permission === 'default') {
+                        await Notification.requestPermission();
+                    }
+                    
+                    if (Notification.permission === 'granted') {
+                        this.log('🔔 Notification permission granted', 'success');
+                    } else {
+                        this.log('⚠️ Notification permission denied', 'warning');
+                    }
+                }
+            }
+
+            showNotification(friend, isOnline) {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    const icon = isOnline ? '🟢' : '🔴';
+                    const action = isOnline ? 'came online' : 'went offline';
+                    
+                    new Notification(`${icon} ${friend.username}`, {
+                        body: `${friend.username} ${action}!`,
+                        icon: friend.avatar_url || '',
+                        tag: `osu-friend-${friend.id}`
+                    });
+                }
+            }
+
+            playSound(isOnline) {
+                try {
+                    const audio = document.getElementById(isOnline ? 'onlineSound' : 'offlineSound');
+                    audio.volume = 0.7;
+                    audio.currentTime = 0;
+                    audio.play().catch(error => {
+                        this.log(`⚠️ Could not play sound: ${error.message}`, 'warning');
+                    });
+                } catch (error) {
+                    this.log(`⚠️ Sound error: ${error.message}`, 'warning');
+                }
+            }
+
+            testNotification() {
+                this.showNotification({ username: 'Test User', avatar_url: '' }, true);
+                this.log('🔔 Test notification sent', 'info');
+            }
+
+            testSound() {
+                this.playSound(true);
+                this.log('🔊 Test sound played', 'info');
+            }
+        }
+
+        // Global functions for HTML event handlers
+        let tracker;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            tracker = new OsuFriendTracker();
+        });
+
+        function saveOAuthCredentials() {
+            tracker.saveOAuthCredentials();
+        }
+
+        function loginWithOsu() {
+            tracker.loginWithOsu();
+        }
+
+        function logout() {
+            tracker.logout();
+        }
+
+        function updatePollInterval(value) {
+            tracker.updatePollInterval(value);
+        }
+
+        function updateSettings() {
+            tracker.updateSettings();
+        }
+
+        function testNotification() {
+            tracker.testNotification();
+        }
+
+        function testSound() {
+            tracker.testSound();
+        }
+    </script>
+</body>
+</html>
